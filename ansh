@@ -1,0 +1,36 @@
+#!/bin/bash -e
+
+set -o pipefail
+
+trap 'printf "\nAborted. Bye 👋\n"; exit 1' 1 2 3 15
+
+# Set inventory
+inventory=$(ls inventories | fzf --reverse --header "📦 Choose inventory")
+echo "📦 : ${inventory}"
+
+# Set target hosts
+hosts=$(cat inventories/${inventory}/hosts | grep '^\[' | grep -v vars | tr -d '[]' | fzf -m --reverse --header "✨ Choose target hosts"| tr '\n' ',' | rev | cut -c 2- | rev)
+echo "✨ : ${hosts}"
+
+# Set play book
+playbook=$(ls playbooks/*.yml | fzf --reverse --header "📚 Choose playbook")
+echo "📚 : ${playbook}"
+
+
+read -r -p "🤔{ Using --check mode? [y/N] (default: N): " res
+printf "\n"
+case $res in
+  [yY]|[yY]es|yes|YES) check='--check';;
+esac
+
+command="ansible-playbook ${check} --diff -i inventories/${inventory} -l ${hosts} ${playbook} ${@:1}"
+
+printf "🖥  ❯ \033[0;32m%s\033[0m\n" "${command}"
+read -r -p "🤔{ Can I execute this command? [y/N] (default: N): " res
+printf "\n"
+case $res in
+  [yY]|[yY]es|yes|YES)
+    ${command}
+    ;;
+  *) printf "Canceled. Bye 👋\n";;
+esac
